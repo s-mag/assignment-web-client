@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
+# Copyright 2023 Sashreek Magan
 # Copyright 2016 Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,13 +42,15 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        return int(re.search(r"HTTP/\d.\d (\d+)", data).group(1))
 
     def get_headers(self,data):
-        return None
+        headers = data.split("\r\n\r\n", 1)[0]
+        return headers.split("\r\n")[1:]
 
     def get_body(self, data):
-        return None
+        body =  data.split("\r\n\r\n", 1)[1]
+        return body
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -67,14 +70,38 @@ class HTTPClient(object):
                 done = not part
         return buffer.decode('utf-8')
 
+    def parse_url(self, url):
+        parsed_url = urllib.parse.urlparse(url)
+        path = parsed_url.path or "/"
+        return path, parsed_url.hostname, parsed_url.port or 80
+
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        path, host, port = self.parse_url(url)
+        request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+        
+        self.connect(host, int(port))
+        self.sendall(request)
+        received = self.recvall(self.socket)
+        self.close()
+
+        code = self.get_code(received)
+        body = self.get_body(received)
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        path, host, port = self.parse_url(url)
+        
+        data = urllib.parse.urlencode(args) if args else ""
+        length = str(len(data))
+        request = "POST " + path + " HTTP/1.1\r\nHost: " + host + "\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: " + length + "\r\nAccept: */*\r\nConnection: close\r\n\r\n" + data
+
+        self.connect(host, int(port))
+        self.sendall(request)
+        received = self.recvall(self.socket)
+        self.close()
+
+        code = self.get_code(received)
+        body = self.get_body(received)
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
