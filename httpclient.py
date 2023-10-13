@@ -77,7 +77,13 @@ class HTTPClient(object):
 
     def GET(self, url, args=None):
         path, host, port = self.parse_url(url)
-        request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+    
+        request = (
+            f"GET {path} HTTP/1.1\r\n"
+            f"Host: {host}\r\n"
+            "Accept: */*\r\n"
+            "Connection: close\r\n\r\n"
+        )
         
         self.connect(host, int(port))
         self.sendall(request)
@@ -91,10 +97,19 @@ class HTTPClient(object):
     def POST(self, url, args=None):
         path, host, port = self.parse_url(url)
         
+        path, host, port = self.parse_url(url)
         data = urllib.parse.urlencode(args) if args else ""
-        length = str(len(data))
-        request = "POST " + path + " HTTP/1.1\r\nHost: " + host + "\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: " + length + "\r\nAccept: */*\r\nConnection: close\r\n\r\n" + data
 
+        request = (
+            f"POST {path} HTTP/1.1\r\n"
+            f"Host: {host}\r\n"
+            "Content-Type: application/x-www-form-urlencoded\r\n"
+            f"Content-Length: {len(data)}\r\n"
+            "Accept: */*\r\n"
+            "Connection: close\r\n\r\n"
+            f"{data}"
+        )
+        
         self.connect(host, int(port))
         self.sendall(request)
         received = self.recvall(self.socket)
